@@ -1,2 +1,4 @@
 *.RProj
 *.RProj.user
+*.keys/
+*enFluxR.Rcheck
