@@ -21,7 +21,7 @@ download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.
     , package    = package
     , savepath   = data_folder
     , check.size = FALSE
-    , token      = .token
+    # , token      = .token
   )
 
   # Find the files that we downloaded
@@ -59,10 +59,11 @@ download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.
     dplyr::select(-empty) %>%
     tidyr::unite(col = 'h5_path', c(group,name), sep = '/', remove = FALSE) %>%
     dplyr::select(-group) %>%
-    tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') # TODO needs some work to work for all sensors
-
+    tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') %>% # TODO needs some work to work for all sensors
+    dplyr::filter(!hor %in% c("co2Arch","co2High","co2Low","co2Med","co2Zero","h2oHigh","h2oLow","h2oMed"))
+  
   # Empty table to join bind to
-  data_out = data.table::data.table()
+  data_out = c()
   for(i in base::seq_along(files_to_read$full_path)){
     message(i)
 
@@ -73,30 +74,26 @@ download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.
       dplyr::select(-empty) %>%
       tidyr::unite(col = 'h5_path', c(group,name), sep = '/', remove = FALSE) %>%
       dplyr::select(-group) %>%
-      tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') # TODO needs some work to work for all sensors
-
-    ## Co2 Turb
+      tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') %>% # TODO needs some work to work for all sensors
+      dplyr::filter(!hor %in% c("co2Arch","co2High","co2Low","co2Med","co2Zero","h2oHigh","h2oLow","h2oMed"))
+    
     co2Turb_ls = ec_file_listing %>%
       dplyr::filter(sensor == 'co2Turb', timing == '30m')
 
-    data_i_out = data.table::data.table()
-
+    data_list = c()
+    
     for(j in base::seq_along(co2Turb_ls$h5_path)){
-
-      data_in = rhdf5::h5read(file = files_to_read$full_path[i], name = co2Turb_ls$h5_path[j]) %>%
+      
+      data_list[[j]] <- rhdf5::h5read(file = files_to_read$full_path[i], name = co2Turb_ls$h5_path[j]) %>%
         dplyr::mutate(sensor = co2Turb_ls$sensor[i], location = paste0(co2Turb_ls$hor[1], '.', co2Turb_ls$ver[i]), timing = co2Turb_ls$timing[i], stream = co2Turb_ls$name[i])
-
-      data_i_out = data.table::rbindlist(l = list(data_i_out, data_in), fill = TRUE)
-      rm(data_in)
-
+      message(pryr::address(data_list))
     }
 
-    data_out = data.table::rbindlist(l = list(data_out, data_i_out), fill = TRUE)
+    data_out = c(data_out, data_list)
 
   }
-
+  
   gc()
-  .rs.restartR()
 
   # RPostgres::dbWriteTable(conn = con, name = 'enflux-dev.test-1', value = data_in)
 
