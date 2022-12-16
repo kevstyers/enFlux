@@ -25,3 +25,4 @@ connect_to_pg = function(host = NULL, port = NULL, user = NULL, pass = NULL){
   return(con)
 
 }
+

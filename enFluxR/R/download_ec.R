@@ -1,12 +1,15 @@
+#' Collect the data from an HDF5 file
 #'
+#' This inserts data into the specified table
 #'
+#' @param site character, 4 letter site code
+#' @param start_date character/date, yyyy-mm-dd, start date to pull
+#' @param end_date character/date, yyyy-mm-dd, end date to pull
+#' @param package character, extended or basic?
+#' @return NA
 #'
-#'
-#  = enFluxR::connect_to_pg()
-site = 'PUUM'
-start_date = '2019-01-01'
-end_date = '2019-05-01'
-package = 'expanded'
+#' @import magrittr
+#' @export
 download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.Date(), package = 'expanded'){
 
   .token = readRDS('~/GitHub/enFlux/.keys/.neon_token.RDS')
@@ -50,55 +53,31 @@ download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.
 
   # List of the files that are now unzipped
   files_to_read = data.table::data.table('full_path' = list.files(data_folder, pattern = '.h5', full.names = TRUE)  ) %>%
-    dplyr::filter(base::grepl(full_path, pattern = 'PUUM'))
+    dplyr::filter(base::grepl(full_path, pattern = site))
 
-  ec_file_listing = rhdf5::h5ls(file = files_to_read$full_path[1], recursive = TRUE) %>%
-    dplyr::filter(grepl(x = group, pattern = paste0('/', site, '/dp01/data/'))) %>%
-    tidyr::separate(col = group, into = c('empty', 'site', 'dp_level', 'type', 'sensor', 'loc_timing'), remove = FALSE, sep = '/') %>%
-    dplyr::filter(!is.na(loc_timing)) %>%
-    dplyr::select(-empty) %>%
-    tidyr::unite(col = 'h5_path', c(group,name), sep = '/', remove = FALSE) %>%
-    dplyr::select(-group) %>%
-    tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') %>% # TODO needs some work to work for all sensors
-    dplyr::filter(!hor %in% c("co2Arch","co2High","co2Low","co2Med","co2Zero","h2oHigh","h2oLow","h2oMed"))
-  
   # Empty table to join bind to
-  data_out = c()
+  data_list = c()
   for(i in base::seq_along(files_to_read$full_path)){
-    message(i)
-
-    ec_file_listing = rhdf5::h5ls(file = files_to_read$full_path[1], recursive = TRUE) %>%
-      dplyr::filter(grepl(x = group, pattern = paste0('/', site, '/dp01/data/'))) %>%
-      tidyr::separate(col = group, into = c('empty', 'site', 'dp_level', 'type', 'sensor', 'loc_timing'), remove = FALSE, sep = '/') %>%
-      dplyr::filter(!is.na(loc_timing)) %>%
-      dplyr::select(-empty) %>%
-      tidyr::unite(col = 'h5_path', c(group,name), sep = '/', remove = FALSE) %>%
-      dplyr::select(-group) %>%
-      tidyr::separate(col = loc_timing, into = c('hor', 'ver', 'timing'), sep = '_') %>% # TODO needs some work to work for all sensors
-      dplyr::filter(!hor %in% c("co2Arch","co2High","co2Low","co2Med","co2Zero","h2oHigh","h2oLow","h2oMed"))
-    
-    co2Turb_ls = ec_file_listing %>%
-      dplyr::filter(sensor == 'co2Turb', timing == '30m')
-
-    data_list = c()
-    
-    for(j in base::seq_along(co2Turb_ls$h5_path)){
-      
-      data_list[[j]] <- rhdf5::h5read(file = files_to_read$full_path[i], name = co2Turb_ls$h5_path[j]) %>%
-        dplyr::mutate(sensor = co2Turb_ls$sensor[i], location = paste0(co2Turb_ls$hor[1], '.', co2Turb_ls$ver[i]), timing = co2Turb_ls$timing[i], stream = co2Turb_ls$name[i])
-      message(pryr::address(data_list))
-    }
-
-    data_out = c(data_out, data_list)
-
+    data_list[[i]] = collect_data(path = files_to_read$full_path[i]) %>%
+      dplyr::mutate(timeBgn = lubridate::ymd_hms(timeBgn)) %>%
+      dplyr::mutate(timeEnd = lubridate::ymd_hms(timeEnd)) %>%
+      dplyr::mutate(site = site) %>%
+      dplyr::rename(time_bgn = timeBgn, time_end = timeEnd, num_samp = numSamp)
   }
-  
-  gc()
 
-  # RPostgres::dbWriteTable(conn = con, name = 'enflux-dev.test-1', value = data_in)
+  data_out = data.table::rbindlist(l = data_list) %>%
+    dplyr::select(site, time_bgn, time_end, stream, tidyr::everything())
 
+  con = enFluxR::connect_to_pg()
+
+  tolower(names(data_out))
+
+  browser()
+
+  str(data_out)
+
+  # RPostgres::dbWriteTable(conn = con, name = 'enflux-dev.test1', value = data_out)
+
+  insert_into_pg(con = con, data = data_out, table = 'enflux-dev.test1')
 
 }
-
-
-
