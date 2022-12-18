@@ -2,7 +2,7 @@
 % Please edit documentation in R/insert_into_pg.R
 \name{insert_into_pg}
 \alias{insert_into_pg}
-\title{#' Insert data into the table}
+\title{Insert data into the table}
 \usage{
 insert_into_pg(con = NULL, data = NULL, table = NULL)
 }
