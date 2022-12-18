@@ -10,8 +10,8 @@ collect_data(path = NULL)
 \item{path}{character, path to the h5 file}
 }
 \value{
-NA
+the data in the HDF5
 }
 \description{
-This inserts data into the specified table
+This opens the HDF5 file at the path and identifies what streams to pull, and grabs them from the file
 }

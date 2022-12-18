@@ -1,6 +1,6 @@
-#' Collect the data from an HDF5 file
+#' @title Wrapper to pull EC data from NEON portal and write it to a PG database
 #'
-#' This inserts data into the specified table
+#' @description This function pulls data, extracts data from HDF5, and saves the data out to a PG server
 #'
 #' @param site character, 4 letter site code
 #' @param start_date character/date, yyyy-mm-dd, start date to pull
@@ -10,22 +10,61 @@
 #'
 #' @import magrittr
 #' @export
-download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.Date(), package = 'expanded'){
+download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.Date(), package = 'basic'){
+
+  con = enFluxR::connect_to_pg()
+
+  # Check to see if the data in the query already exists in the database
+  check_not_duping = glue::glue_sql(
+  "
+  select
+	date_trunc('month', time_end) as ym
+	, site
+	, count(*) as row_count
+  from dev_ecte
+  where mean is not null
+  group by site, ym
+  order by site, ym
+  ", .con = con )
+
+  res = RPostgres::dbSendQuery(conn = con, statement = check_not_duping)
+  check_table = RPostgres::dbFetch(res) %>%
+    dplyr::mutate(ym = as.character(ym))
+
+  # Conver to dates
+  start_date = as.Date(start_date)
+  end_date   = as.Date(end_date)
+
+  # Filter query down to just months where we don't already have data
+  months_in_query_params = data.table::data.table('ym' = as.character(seq.Date(from = start_date, to = end_date, by = '1 month')))
+  months_in_query = months_in_query_params %>%
+    dplyr::filter(!ym %in% check_table$ym) %>%
+    dplyr::pull(ym)
 
   .token = readRDS('~/GitHub/enFlux/.keys/.neon_token.RDS')
 
   data_folder = tempdir()
 
-  neonUtilities::zipsByProduct(
-    dpID         = 'DP4.00200.001'
-    , site       = site
-    , startdate  = start_date
-    , enddate    = end_date
-    , package    = package
-    , savepath   = data_folder
-    , check.size = FALSE
-    # , token      = .token
-  )
+  for(i in months_in_query){
+
+    message(paste0('testing ', i))
+
+    i_end =  as.character(as.Date(i) %m+% months(1))
+
+    poss_ZBP = purrr::possibly(neonUtilities::zipsByProduct, otherwise = 'error')
+
+    poss_ZBP(
+      dpID         = 'DP4.00200.001'
+      , site       = site
+      , startdate  = i
+      , enddate    = i_end
+      , package    = package
+      , savepath   = data_folder
+      , check.size = FALSE
+      , token      = .token
+    )
+
+  }
 
   # Find the files that we downloaded
   files_to_stack = list.files(data_folder, pattern = "filesToStack", full.names = TRUE)
@@ -66,18 +105,12 @@ download_ec = function(site = 'PUUM', start_date = '2000-01-01', end_date = Sys.
   }
 
   data_out = data.table::rbindlist(l = data_list) %>%
-    dplyr::select(site, time_bgn, time_end, stream, tidyr::everything())
+    dplyr::select(site, timing, time_bgn, time_end, location, sensor, stream, tidyr::everything())
 
   con = enFluxR::connect_to_pg()
 
-  tolower(names(data_out))
+  names(data_out) = tolower(names(data_out))
 
-  browser()
-
-  str(data_out)
-
-  # RPostgres::dbWriteTable(conn = con, name = 'enflux-dev.test1', value = data_out)
-
-  insert_into_pg(con = con, data = data_out, table = 'enflux-dev.test1')
+  insert_into_pg(con = con, table = 'dev_ecte', data = data_out)
 
 }

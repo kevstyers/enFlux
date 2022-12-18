@@ -2,13 +2,13 @@
 % Please edit documentation in R/download_ec.R
 \name{download_ec}
 \alias{download_ec}
-\title{Collect the data from an HDF5 file}
+\title{Wrapper to pull EC data from NEON portal and write it to a PG database}
 \usage{
 download_ec(
   site = "PUUM",
-  start_date = "2000-01-01",
+  start_date = "2017-01-01",
   end_date = Sys.Date(),
-  package = "expanded"
+  package = "basic"
 )
 }
 \arguments{
@@ -24,5 +24,5 @@ download_ec(
 NA
 }
 \description{
-This inserts data into the specified table
+This function pulls data, extracts data from HDF5, and saves the data out to a PG server
 }

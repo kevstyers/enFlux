@@ -2,6 +2,7 @@
 
 export(collect_data)
 export(connect_to_pg)
+export(create_dev_ecte)
 export(download_ec)
 export(insert_into_pg)
 export(pull_data)

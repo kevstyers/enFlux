@@ -2,7 +2,7 @@
 % Please edit documentation in R/connect_to_pg.R
 \name{connect_to_pg}
 \alias{connect_to_pg}
-\title{#' Connect to the Postgres server}
+\title{Connect to the Postgres server}
 \usage{
 connect_to_pg(host = NULL, port = NULL, user = NULL, pass = NULL)
 }

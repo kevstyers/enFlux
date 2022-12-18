@@ -19,5 +19,5 @@ pull_data(site = NULL, start_date = NULL, end_date = NULL, verbose = TRUE)
 NA
 }
 \description{
-This inserts data into the specified table
+This pulls EC data using the parameters user specifies to generate a SQL query that collects data from the PG server
 }

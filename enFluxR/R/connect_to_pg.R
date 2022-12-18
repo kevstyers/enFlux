@@ -1,6 +1,6 @@
-#' #' Connect to the Postgres server
+#' @title Connect to the Postgres server
 #'
-#' This connects to the PG server, acting as a wrapper
+#' @description  This connects to the PG server, acting as a wrapper
 #'
 #' @param host character, host name of pg server
 #' @param port character, port of pg server

@@ -1,9 +1,9 @@
-#' Collect the data from an HDF5 file
+#' @title Collect the data from an HDF5 file
 #'
-#' This inserts data into the specified table
+#' @description This opens the HDF5 file at the path and identifies what streams to pull, and grabs them from the file
 #'
 #' @param path character, path to the h5 file
-#' @return NA
+#' @return the data in the HDF5
 #' @export
 collect_data = function(path = NULL){
 

@@ -1,6 +1,6 @@
-#' Grab EC data from pg
+#' @title Grab EC data from pg
 #'
-#' This inserts data into the specified table
+#' @description This pulls EC data using the parameters user specifies to generate a SQL query that collects data from the PG server
 #'
 #' @param site character, 4 letter site code
 #' @param start_date character/date, yyyy-mm-dd, start date to pull
@@ -16,7 +16,7 @@ pull_data = function(site = NULL, start_date = NULL, end_date = NULL, verbose = 
   # Check query
   con = enFluxR::connect_to_pg()
 
-  query = glue::glue_sql(paste0("select * from \"enflux-dev.test1\" where site = '", site, "' and time_bgn >= '", start_date, "' and time_end <= '", end_date, "'"), .con = con)
+  query = glue::glue_sql(paste0("select * from dev_ecte where site = '", site, "' and time_bgn >= '", start_date, "' and time_end <= '", end_date, "' and num_samp != 0"), .con = con)
 
   # Pull data
   if(verbose){
