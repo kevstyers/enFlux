@@ -51,18 +51,27 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
 
   data_folder = tempdir()
 
-  for(i in months_in_query){
+  num_months_in_query = length(months_in_query_params$ym)
+  num_months_already_in_pg = length(months_already_in_pg)
+  num_months_new_to_pg = num_months_in_query - num_months_already_in_pg
 
-    init_msg(msg = paste0("Testing: ", i))
+  init_msg(paste0("\nMonths in query: \t", num_months_in_query,
+                  "\nMonths already in pg: \t", num_months_already_in_pg,
+                  "\nNew months to pull: \t", num_months_new_to_pg))
 
-    i_end =  as.character(as.Date(i) %m+% months(1))
+  for(i in seq_along(months_in_query)){
+
+    init_msg(msg = paste0("Pulling ", months_in_query[i], " --- ", 100*round(i/length(months_in_query),2), "% done"))
+
+    i_start = as.character(months_in_query[i])
+    i_end   = as.character(as.Date(months_in_query[i], origin = '1970-01-01') %m+% months(1))
 
     poss_ZBP = purrr::possibly(neonUtilities::zipsByProduct, otherwise = 'error', quiet = FALSE)
 
     poss_ZBP(
       dpID         = 'DP4.00200.001'
       , site       = site
-      , startdate  = i
+      , startdate  = i_start
       , enddate    = i_end
       , package    = package
       , savepath   = data_folder
