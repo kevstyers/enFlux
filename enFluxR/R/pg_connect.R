@@ -8,7 +8,7 @@
 #' @param pass character, password for pg server
 #' @return Connection object for pg queries
 #' @export
-connect_to_pg = function(host = NULL, port = NULL, user = NULL, pass = NULL){
+pg_connect = function(host = NULL, port = NULL, user = NULL, pass = NULL){
 
   .creds = readRDS(file = '~/GitHub/enFlux/.keys/.pg_server.RDS')
 

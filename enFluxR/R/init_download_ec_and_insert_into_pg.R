@@ -9,10 +9,12 @@
 #' @return NA
 #'
 #' @import magrittr
+#' @import lubridate
 #' @export
-download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.Date(), package = 'basic'){
+init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.Date(), package = 'basic'){
 
-  con = enFluxR::connect_to_pg()
+  init_msg("Connecting...")
+  con = enFluxR::pg_connect()
 
   # Check to see if the data in the query already exists in the database
   check_not_duping = glue::glue_sql(
@@ -27,18 +29,22 @@ download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.
   order by site, ym
   ", .con = con )
 
+  init_msg("Checking for duplicates already in pg")
   res = RPostgres::dbSendQuery(conn = con, statement = check_not_duping)
-  check_table = RPostgres::dbFetch(res) %>%
-    dplyr::mutate(ym = as.character(ym))
+  months_already_in_pg = RPostgres::dbFetch(res) %>%
+    dplyr::mutate(ym = as.Date(ym)) %>%
+    dplyr::pull(ym)
 
   # Conver to dates
   start_date = as.Date(start_date)
   end_date   = as.Date(end_date)
 
+  `%not%` = Negate(`%in%`)
+
   # Filter query down to just months where we don't already have data
-  months_in_query_params = data.table::data.table('ym' = as.character(seq.Date(from = start_date, to = end_date, by = '1 month')))
+  months_in_query_params = data.table::data.table('ym' = as.Date(seq.Date(from = start_date, to = end_date, by = '1 month')))
   months_in_query = months_in_query_params %>%
-    dplyr::filter(!ym %in% check_table$ym) %>%
+    dplyr::filter(ym %not% months_already_in_pg) %>%
     dplyr::pull(ym)
 
   .token = readRDS('~/GitHub/enFlux/.keys/.neon_token.RDS')
@@ -47,11 +53,11 @@ download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.
 
   for(i in months_in_query){
 
-    message(paste0('testing ', i))
+    init_msg(msg = paste0("Testing: ", i))
 
     i_end =  as.character(as.Date(i) %m+% months(1))
 
-    poss_ZBP = purrr::possibly(neonUtilities::zipsByProduct, otherwise = 'error')
+    poss_ZBP = purrr::possibly(neonUtilities::zipsByProduct, otherwise = 'error', quiet = FALSE)
 
     poss_ZBP(
       dpID         = 'DP4.00200.001'
@@ -65,6 +71,8 @@ download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.
     )
 
   }
+
+  browser()
 
   # Find the files that we downloaded
   files_to_stack = list.files(data_folder, pattern = "filesToStack", full.names = TRUE)
@@ -97,7 +105,7 @@ download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.
   # Empty table to join bind to
   data_list = c()
   for(i in base::seq_along(files_to_read$full_path)){
-    data_list[[i]] = collect_data(path = files_to_read$full_path[i]) %>%
+    data_list[[i]] = init_collect_hdf5_data(path = files_to_read$full_path[i]) %>%
       dplyr::mutate(timeBgn = lubridate::ymd_hms(timeBgn)) %>%
       dplyr::mutate(timeEnd = lubridate::ymd_hms(timeEnd)) %>%
       dplyr::mutate(site = site) %>%
@@ -107,10 +115,8 @@ download_ec = function(site = 'PUUM', start_date = '2017-01-01', end_date = Sys.
   data_out = data.table::rbindlist(l = data_list) %>%
     dplyr::select(site, timing, time_bgn, time_end, location, sensor, stream, tidyr::everything())
 
-  con = enFluxR::connect_to_pg()
-
   names(data_out) = tolower(names(data_out))
 
-  insert_into_pg(con = con, table = 'dev_ecte', data = data_out)
+  init_insert_into_pg(con = con, table = 'dev_ecte', data = data_out)
 
 }

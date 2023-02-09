@@ -8,13 +8,13 @@
 #' @param verbose logical, TRUE if you want your query back
 #' @return NA
 #' @export
-pull_data = function(site = NULL, start_date = NULL, end_date = NULL, verbose = TRUE) {
+pg_pull_data = function(site = NULL, start_date = NULL, end_date = NULL, verbose = TRUE) {
 
   start_time = Sys.time()
   # Check conn
 
   # Check query
-  con = enFluxR::connect_to_pg()
+  con = enFluxR::pg_connect()
 
   query = glue::glue_sql(paste0("select * from dev_ecte where site = '", site, "' and time_bgn >= '", start_date, "' and time_end <= '", end_date, "' and num_samp != 0"), .con = con)
 

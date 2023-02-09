@@ -5,7 +5,7 @@
 #' @param path character, path to the h5 file
 #' @return the data in the HDF5
 #' @export
-collect_data = function(path = NULL){
+init_collect_hdf5_data = function(path = NULL){
 
   ec_file_listing = rhdf5::h5ls(file = path, recursive = TRUE) %>%
     dplyr::filter(grepl(x = group, pattern = paste0('/', site, '/dp01/data/'))) %>%

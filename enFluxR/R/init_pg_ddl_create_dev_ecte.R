@@ -7,8 +7,8 @@
 #' @param table character, name of pg table
 #' @return NA
 #' @export
-create_dev_ecte = function(){
-  con = enFluxR::connect_to_pg()
+init_pg_ddl_create_dev_ecte = function(){
+  con = enFluxR::pg_connect()
 
   dev_ecte_exists = RPostgres::dbExistsTable(conn = con, name = 'dev_ecte')
 

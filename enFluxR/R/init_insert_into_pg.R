@@ -7,7 +7,7 @@
 #' @param table character, name of pg table
 #' @return NA
 #' @export
-insert_into_pg = function(con = NULL, data = NULL, table = NULL){
+init_insert_into_pg = function(con = NULL, data = NULL, table = NULL){
 
   # query_count = glue::glue_sql('select date(time_end) as date, count(*) from dev_ecte group by date(time_end) order by  date desc',.con = con)
   # res = RPostgres::dbSendQuery(conn = con, statement = query_count)
