@@ -59,12 +59,18 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
                   "\nMonths already in pg: \t", num_months_already_in_pg,
                   "\nNew months to pull: \t", num_months_new_to_pg))
 
+  if(length(months_in_query) == 0){
+    "All months were already in pg."
+  }
+
   for(i in seq_along(months_in_query)){
 
     init_msg(msg = paste0("Pulling ", months_in_query[i], " --- ", 100*round(i/length(months_in_query),2), "% done"))
 
-    i_start = as.character(months_in_query[i])
-    i_end   = as.character(as.Date(months_in_query[i], origin = '1970-01-01') %m+% months(1))
+    # Well maybe I'm crazy, but the way zipsByProduct handles pulling months with a start end date, is bizare
+    # basically the following gives us the expect month ie if months_in_query[i] = '2022-01-01' then we pull the month of January 2022
+    i_start = as.character(as.Date(months_in_query[i] - days(1)))
+    i_end   = as.character(as.Date(months_in_query[i], origin = '1970-01-01') %m+% months(1) - days(1))
 
     poss_ZBP = purrr::possibly(neonUtilities::zipsByProduct, otherwise = 'error', quiet = FALSE)
 
@@ -81,16 +87,23 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
 
   }
 
-  browser()
-
   # Find the files that we downloaded
   files_to_stack = list.files(data_folder, pattern = "filesToStack", full.names = TRUE)
+
+  # Check if any files were available
+  if(length(files_to_stack) == 0){
+    stop(
+      "No files not in pg were available for download"
+    )
+  }
+
   # Find the actual zip we need to unzip
   files_to_unzip = list.files(files_to_stack, full.names = TRUE)
 
   # Set working directory to output the unzip'ed files
   setwd(data_folder)
 
+  init_msg("Unzipping files now.")
   # Unzip the files
   for(i in files_to_unzip){
     utils::unzip(zipfile = i)
@@ -102,7 +115,8 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
   # For each file, unzip it in place
   # TODO: parallelize this takes forever
   for(i in files_to_unzip2){
-    message(i)
+
+    init_msg(paste0(" Unzipping - ", i))
     # Unzip the i'th file
     R.utils::gunzip(filename = i)
   }
@@ -110,6 +124,8 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
   # List of the files that are now unzipped
   files_to_read = data.table::data.table('full_path' = list.files(data_folder, pattern = '.h5', full.names = TRUE)  ) %>%
     dplyr::filter(base::grepl(full_path, pattern = site))
+
+  init_msg("Ripping data")
 
   # Empty table to join bind to
   data_list = c()
@@ -126,6 +142,7 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
 
   names(data_out) = tolower(names(data_out))
 
+  init_msg(paste0("Inserting ", nrow(data_out), " rows."))
   init_insert_into_pg(con = con, table = 'dev_ecte', data = data_out)
 
 }
