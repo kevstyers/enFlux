@@ -56,14 +56,22 @@ init_pg_ddl_create_dev_ecte = function(){
 
     ## Drop that
     # drop table
-    drop_query = glue::glue_sql('drop table public.dev_ecte', .con = con)
-    RPostgres::dbSendQuery(conn = con, statement = drop_query)
+    if(!RPostgres::dbExistsTable(conn = con, name = 'public.dev_ecte')){
+      drop_query = glue::glue_sql('drop table public.dev_ecte', .con = con)
+    }
+    if(!RPostgres::dbExistsTable(conn = con, name = 'public.dev_ecte')){
+      RPostgres::dbSendQuery(conn = con, statement = drop_query)
+    }
     # drop template
+    if(!RPostgres::dbExistsTable(conn = con, name = 'public.dev_ecte')){
     drop_query = glue::glue_sql('drop table public.template_public_dev_ecte', .con = con)
-    RPostgres::dbSendQuery(conn = con, statement = drop_query)
+      RPostgres::dbSendQuery(conn = con, statement = drop_query)
+    }
     # drop partitions
+    if(!RPostgres::dbExistsTable(conn = con, name = 'public.dev_ecte')){
     drop_query = glue::glue_sql('drop extension pg_partman', .con = con)
-    RPostgres::dbSendQuery(conn = con, statement = drop_query)
+      RPostgres::dbSendQuery(conn = con, statement = drop_query)
+    }
 
 
     message('creating table')
