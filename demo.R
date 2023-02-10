@@ -42,3 +42,4 @@ res = RPostgres::dbSendQuery(conn = con, statement = query)
 data = RPostgres::dbFetch(res)
 
 RPostgres::dbListTables(conn = con)
+enFluxR::init_pg_ddl_create_dev_ecte()
