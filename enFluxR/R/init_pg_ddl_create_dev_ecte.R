@@ -115,6 +115,4 @@ init_pg_ddl_create_dev_ecte = function(){
 
   }
 
-
-
 }
