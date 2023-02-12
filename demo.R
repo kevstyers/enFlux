@@ -1,9 +1,9 @@
 # library(tidyverse)
 library(enFluxR)
 
-site = 'PUUM'
-start_date = '2017-11-01'
-end_date = '2020-05-01'
+site = 'CPER'
+start_date = '2016-01-01'
+end_date = '2023-01-01'
 package = 'basic'
 
 
@@ -26,11 +26,13 @@ query_count = glue::glue_sql(
 res = RPostgres::dbSendQuery(conn = con, statement = query_count)
 count_of_rows = RPostgres::dbFetch(res)
 
-
-enFluxR::pg_pull_data(site = "PUUM", start_date = "2001-12-01", end_date = "2021-12-31") %>%
+con = enFluxR::pg_connect()
+enFluxR::pg_pull_data(site = "CPER", start_date = "2001-12-01", end_date = "2023-12-31", table = 'dev_ecte_no_indexno_partition', con = con) %>%
   dplyr::filter(stream == 'rtioMoleDryCo2') %>%
   ggplot(., aes(x = time_end, y = mean, color = location)) +
-  geom_point()
+  geom_point() +
+  facet_wrap(~site) +
+  theme_bw()
 
 con = enFluxR::pg_connect()
 
@@ -42,4 +44,31 @@ res = RPostgres::dbSendQuery(conn = con, statement = query)
 data = RPostgres::dbFetch(res)
 
 RPostgres::dbListTables(conn = con)
+
 enFluxR::init_pg_ddl_create_dev_ecte()
+
+
+
+##################################################################
+################# Testing Indexed vs non-Indexed  ################
+##################################################################
+con = enFluxR::pg_connect()
+
+
+
+
+message("Non-Indexed, non-partitioned")
+for(i in 1:10){
+  enFluxR::pg_pull_data(table = "dev_ecte_no_indexno_partition",site = "PUUM", start_date = "2001-12-01", end_date = "2021-12-31", con = con) %>%
+    dplyr::filter(stream == 'rtioMoleDryCo2')
+}
+message("Non-Indexed")
+for(i in 1:10){
+  enFluxR::pg_pull_data(table = "dev_ecte_no_index",site = "PUUM", start_date = "2001-12-01", end_date = "2021-12-31", con = con) %>%
+    dplyr::filter(stream == 'rtioMoleDryCo2')
+}
+message("Indexed")
+for(i in 1:10){
+  enFluxR::pg_pull_data(table = "dev_ecte", site = "PUUM", start_date = "2001-12-01", end_date = "2021-12-31", con = con) %>%
+    dplyr::filter(stream == 'rtioMoleDryCo2')
+}
