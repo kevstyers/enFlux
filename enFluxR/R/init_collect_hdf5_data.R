@@ -7,6 +7,7 @@
 #' @export
 init_collect_hdf5_data = function(path = NULL){
 
+  # TODO grab all the other neat streams
   ec_file_listing = rhdf5::h5ls(file = path, recursive = TRUE) %>%
     dplyr::filter(grepl(x = group, pattern = paste0('/', site, '/dp01/data/'))) %>%
     tidyr::separate(col = group, into = c('empty', 'site', 'dp_level', 'type', 'sensor', 'loc_timing'), remove = FALSE, sep = '/') %>%
