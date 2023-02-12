@@ -18,16 +18,21 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
 
   # Check to see if the data in the query already exists in the database
   check_not_duping = glue::glue_sql(
-  "
-  select
-	date_trunc('month', time_end) as ym
-	, site
-	, count(*) as row_count
-  from dev_ecte
-  where mean is not null
-  group by site, ym
-  order by site, ym
-  ", .con = con )
+    paste0(
+      "
+      select
+    	date_trunc('month', time_end) as ym
+    	, site
+    	, count(*) as row_count
+      from dev_ecte_no_indexno_partition
+      where site = '", site,"'",
+      "
+      and mean is not null
+      group by site, ym
+      order by site, ym
+      "
+    )
+  , .con = con )
 
   init_msg("Checking for duplicates already in pg")
   res = RPostgres::dbSendQuery(conn = con, statement = check_not_duping)
@@ -49,15 +54,16 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
 
   .token = readRDS('~/GitHub/enFlux/.keys/.neon_token.RDS')
 
+  # Specify the tempdir
   data_folder = tempdir()
 
   num_months_in_query = length(months_in_query_params$ym)
   num_months_already_in_pg = length(months_already_in_pg)
-  num_months_new_to_pg = num_months_in_query - num_months_already_in_pg
+  num_months_new_to_pg = num_months_in_query - num_months_already_in_pg # Count is not always right
 
-  init_msg(paste0("\nMonths in query: \t", num_months_in_query,
-                  "\nMonths already in pg: \t", num_months_already_in_pg,
-                  "\nNew months to pull: \t", num_months_new_to_pg))
+  init_msg(paste0("\n\tMonths in query: \t", num_months_in_query,
+                  "\n\tMonths already in pg: \t", num_months_already_in_pg,
+                  "\n\tNew months to pull: \t", num_months_new_to_pg))
 
   if(length(months_in_query) == 0){
     "All months were already in pg."
@@ -130,6 +136,7 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
   # Empty table to join bind to
   data_list = c()
   for(i in base::seq_along(files_to_read$full_path)){
+    # browser()
     data_list[[i]] = init_collect_hdf5_data(path = files_to_read$full_path[i]) %>%
       dplyr::mutate(timeBgn = lubridate::ymd_hms(timeBgn)) %>%
       dplyr::mutate(timeEnd = lubridate::ymd_hms(timeEnd)) %>%
@@ -143,6 +150,28 @@ init_download_ec_and_insert_into_pg = function(site = 'PUUM', start_date = '2017
   names(data_out) = tolower(names(data_out))
 
   init_msg(paste0("Inserting ", nrow(data_out), " rows."))
-  init_insert_into_pg(con = con, table = 'dev_ecte', data = data_out)
+  init_insert_into_pg(con = con, table = 'dev_ecte_no_indexno_partition', data = data_out)
+
+
+  init_msg("Deleting files from pull")
+
+  file_types_to_delete = c('.txt', '.h5', '.xml')
+
+  all_files_in_temp = data.table::data.table(files = list.files(data_folder)) %>%
+    dplyr::filter(
+      grepl(pattern = file_types_to_delete[1],x = files)
+      | grepl(pattern = file_types_to_delete[2],x = files)
+      | grepl(pattern = file_types_to_delete[3],x = files)
+    )
+
+  lapply(X = all_files_in_temp$files, FUN = file.remove)
+
+  # Delete the zips from earlier
+  if(length(list.files(data_folder, pattern = 'filesToStack')) == 1){
+
+    lapply(X = list.files(paste0(data_folder,'\\filesToStack00200'), full.names = TRUE), file.remove)
+
+  }
+
 
 }
