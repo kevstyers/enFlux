@@ -4,7 +4,14 @@
 \alias{pg_pull_data}
 \title{Grab EC data from pg}
 \usage{
-pg_pull_data(site = NULL, start_date = NULL, end_date = NULL, verbose = TRUE)
+pg_pull_data(
+  site = NULL,
+  start_date = NULL,
+  end_date = NULL,
+  verbose = TRUE,
+  con = NULL,
+  table = "dev_ecte"
+)
 }
 \arguments{
 \item{site}{character, 4 letter site code}
@@ -14,6 +21,10 @@ pg_pull_data(site = NULL, start_date = NULL, end_date = NULL, verbose = TRUE)
 \item{end_date}{character/date, yyyy-mm-dd, end date to pull}
 
 \item{verbose}{logical, TRUE if you want your query back}
+
+\item{con}{connection to pg database, optional}
+
+\item{table}{default is dev_ecte, specify if otherwise another table}
 }
 \value{
 NA
